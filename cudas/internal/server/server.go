@@ -17,6 +17,10 @@ var MeasLocation = "qingdao"
 var wg sync.WaitGroup
 
 var MainDomain string
+var MainDomain_auth2 string
+var MainDomain_auth3 string
+var MainDomain_auth4 string
+
 var NSv4 string
 var NSv6 string
 var handlerMap map[string]func(dns.ResponseWriter, *dns.Msg)
@@ -70,34 +74,35 @@ func handleDnsRequest(w dns.ResponseWriter, m *dns.Msg) {
 }
 
 func Main(mode string) {
-	AuthName2Addr = map[string]string{
-		"ns-v6-2": "240b:4001:112:7b00:79e3:688a:710c:6856",
-		"ns-v6-4": "240b:4001:112:7b00:79e3:688a:710c:6859",
-		"ns-v4-3": "47.238.64.245",
-	}
+	//AuthName2Addr = map[string]string{
+	//	"ns-v6-2": "240b:4001:112:7b00:79e3:688a:710c:6856",
+	//	"ns-v6-4": "240b:4001:112:7b00:79e3:688a:710c:6859",
+	//	"ns-v4-3": "47.238.64.245",
+	//}
 	MainDomain = dns.Fqdn("dual-stack-discovery.cn.")
+	MainDomain_auth2 = dns.Fqdn("auth2-dsd.cn.")
+	MainDomain_auth3 = dns.Fqdn("ns-auth2-dsd.cn.")
+	MainDomain_auth4 = dns.Fqdn("auth4-dsd.cn.")
 	switch mode {
 	case "v4-1":
 		handlerMap = map[string]func(dns.ResponseWriter, *dns.Msg){
 			// 子域名的匹配，遇到不同子域名，给不同的处理
-			"v4-1":    handler_v4_1,
-			"ns-v6-2": handler_ns_v6_2, // 这些NS记录，实际上也是查询
-			"ns-v6-4": handler_ns_v6_4,
-			"ns-v4-3": handler_ns_v4_3,
+			"v4-1": handler_v4_1,
 		}
 	case "v6-2":
-		MainDomain = dns.Fqdn("dual-stack-discovery.cn.")
+		MainDomain = MainDomain_auth2
 		handlerMap = map[string]func(dns.ResponseWriter, *dns.Msg){
 			// 子域名的匹配，遇到不同子域名，给不同的处理
 			"v6-2": handler_v6_2,
 		}
 	case "v4-3":
-		MainDomain = dns.Fqdn("dual-stack-discovery.cn.")
+		MainDomain = MainDomain_auth3
 		handlerMap = map[string]func(dns.ResponseWriter, *dns.Msg){
 			// 子域名的匹配，遇到不同子域名，给不同的处理
 			"v4-3": handler_v4_3,
 		}
 	case "v6-4":
+		MainDomain = MainDomain_auth4
 		handlerMap = map[string]func(dns.ResponseWriter, *dns.Msg){
 			// 子域名的匹配，遇到不同子域名，给不同的处理
 			"v6-4": handler_v6_4,

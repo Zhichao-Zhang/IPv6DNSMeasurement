@@ -47,11 +47,11 @@ func handler_v4_1(w dns.ResponseWriter, m *dns.Msg) {
 
 		N := utils.GetNonce()
 
-		cName := strings.Join([]string{N, ip2, ip1, "v6-2"}, ".") + "." + MainDomain
+		cName := strings.Join([]string{N, ip2, ip1, "v6-2"}, ".") + "." + MainDomain_auth2
 		logger.Infof("响应：AAAA - qname：%s - 解析器IP： %s - CNAME记录 %s", m.Question[0].Name, w.RemoteAddr().String(), cName)
 		cnameHandler(w, m, cName)
 
 	case dns.TypeNS:
-		nsHandler(w, m, "ns1.dual-stack-ns.top.")
+		nsHandler(w, m, "ns1.dual-stack-ns.top")
 	}
 }
