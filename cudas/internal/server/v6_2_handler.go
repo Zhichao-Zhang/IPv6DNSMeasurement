@@ -2,7 +2,6 @@ package server
 
 import (
 	"Dual_Stack_DNS_Discovery/cudas/internal/utils"
-	"fmt"
 	"github.com/miekg/dns"
 	"strings"
 )
@@ -18,21 +17,14 @@ func handler_v6_2(w dns.ResponseWriter, m *dns.Msg) {
 
 			也可能查找N.IP2.IP1.v6-2.chain.dual_stack_discovery.cn的NS记录（这是上一级v4-1返回的CNAME）
 	*/
-	parts := strings.Split(dns.Fqdn(m.Question[0].Name), ".")
-
-	if len(parts) != 8 {
-		logger.Debugf("invalid question name: %s %s", m.Question[0].Name, len(parts))
-		emptyHandler(w, m)
-		return
-	}
 
 	switch m.Question[0].Qtype {
 	case dns.TypeNS:
 		/*
 			当问这个域名的NS，就回复另一个子域名，附上AAAA资源记录，该子域名只支持v6
 		*/
-		nsName := "ns-v6-2." + MainDomain
-		nsOfCnameHandler(w, m, nsName)
+		nsSubdomain := "ns-v6-2"
+		nsOfCnameHandler(w, m, nsSubdomain)
 
 	case dns.TypeAAAA:
 		/*
@@ -40,6 +32,15 @@ func handler_v6_2(w dns.ResponseWriter, m *dns.Msg) {
 			应答区：CNAME N.IP3.IP2.IP1.v4-3.chain.dual_stack_discovery.cn
 			附加趋：NS + AAAA
 		*/
+
+		parts := strings.Split(dns.Fqdn(m.Question[0].Name), ".")
+
+		if len(parts) != 7 {
+			logger.Debugf("invalid question name: %s %s", m.Question[0].Name, len(parts))
+			emptyHandler(w, m)
+			return
+		}
+
 		ip1 := parts[len(parts)-MainDomainPartAmount-3]
 		ip2 := parts[len(parts)-MainDomainPartAmount-4]
 
@@ -57,24 +58,10 @@ func handler_v6_2(w dns.ResponseWriter, m *dns.Msg) {
 
 		N := utils.GetNonce()
 
-		logger.Infof("收到请求：AAAA - qname：%s - 解析器IP： %s", m.Question[0].Name, w.RemoteAddr().String())
-		resp := new(dns.Msg)
-		resp.SetReply(m)
-		resp.Authoritative = true
-		resp.Rcode = dns.RcodeSuccess
-		cname := strings.Join([]string{N, ip3, ip2, ip1, "v4-3"}, ".") + "." + MainDomain
-		//logger.Infof("cname %s", cname)
-		rrCNAME, err := dns.NewRR(fmt.Sprintf("%s CNAME %s", m.Question[0].Name, cname))
-		if err != nil {
-			logger.Errorf("error in build rr %s: %v", m.Question[0].Name, err)
-			return
-		}
-		resp.Answer = append(resp.Answer, rrCNAME)
-		err = w.WriteMsg(resp)
-		if err != nil {
-			logger.Errorf("error in writing msg: %v", err)
-		}
-
+		cName := strings.Join([]string{N, ip3, ip2, ip1, "v4-3"}, ".") + "." + MainDomain
+		logger.Infof("收到请求：AAAA - qname：%s - 解析器IP： %s 回复CNAME：%s", m.Question[0].Name, w.RemoteAddr().String(), cName)
+		//cnameHandler(w, m, cName) //change this!
+		aaaaHandler(w, m, "2002::")
 	}
 }
 
@@ -92,22 +79,19 @@ func handler_ns_v6_2(w dns.ResponseWriter, m *dns.Msg) {
 			当问这个域名的NS，就回复另一个子域名，附上AAAA资源记录，该子域名只支持v6
 		*/
 		logger.Infof("收到请求：AAAA - qname：%s - 解析器IP： %s", m.Question[0].Name, w.RemoteAddr().String())
-		resp := new(dns.Msg)
-		resp.SetReply(m)
-		resp.Authoritative = true
-		resp.Rcode = dns.RcodeSuccess
 		nsAddr := AuthName2Addr["ns-v6-2"]
-		rr, err := dns.NewRR(fmt.Sprintf("%s AAAA %s", m.Question[0].Name, nsAddr))
-		if err != nil {
-			logger.Errorf("error in build rr %s: %v", m.Question[0].Name, err)
-			return
-		}
-		resp.Answer = append(resp.Answer, rr)
+		aaaaHandler(w, m, nsAddr)
 
-		err = w.WriteMsg(resp)
-		if err != nil {
-			logger.Errorf("error in writing msg: %v", err)
-		}
+	case dns.TypeA:
+		/*
+			当问这个域名的NS，就回复另一个子域名，附上AAAA资源记录，该子域名只支持v6
+		*/
+		logger.Infof("收到请求：A - qname：%s - 解析器IP： %s", m.Question[0].Name, w.RemoteAddr().String())
+		aHandler(w, m, "47.239.102.116")
 
+	case dns.TypeNS:
+		logger.Infof("收到请求：NS - qname：%s - 解析器IP： %s", m.Question[0].Name, w.RemoteAddr().String())
+		nsHandler(w, m, "ns1.dual-stack-ns.top.")
 	}
+
 }

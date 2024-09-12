@@ -14,7 +14,7 @@ func main() {
 		return
 	}
 	mode := gcmd.GetOpt("m").String()
-	allow_mode_types := map[string]bool{"cudas": true}
+	allow_mode_types := map[string]bool{"v4-1": true, "v6-2": true, "v4-3": true, "v6-4": true}
 	if _, exists := allow_mode_types[mode]; exists {
 		fmt.Printf("starting the [auth %s] server ... \n", mode)
 		server.Main(mode)
@@ -30,7 +30,7 @@ const HelpStr = `USAGE
 	SubCommand
 		help			打印帮助信息
 	OPTION [mode]
-		-m				指定权威服务器模式（可选：cudas, client, measurement ...对应测量模型的权威）
+		-m				指定权威服务器模式（可选：v4-1, v6-2, v4-3, v6-4, client, measurement ...对应测量模型的权威）
 	EXAMPLES
 		go run main -m A
 		go run main -m B

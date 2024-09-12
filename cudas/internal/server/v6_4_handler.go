@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"github.com/miekg/dns"
 	"strings"
 )
@@ -14,22 +13,14 @@ func handler_v6_4(w dns.ResponseWriter, m *dns.Msg) {
 			具体的：
 				接收到AAAA记录查询：N.IP4.IP3.IP2.IP1.v6-2.chain.dual_stack_discovery.cn
 				回复IPv6地址
-
 	*/
-	parts := strings.Split(dns.Fqdn(m.Question[0].Name), ".")
-
-	if len(parts) != 8 {
-		logger.Debugf("invalid question name: %s %s", m.Question[0].Name, len(parts))
-		emptyHandler(w, m)
-		return
-	}
 
 	switch m.Question[0].Qtype {
 	case dns.TypeNS:
 		/*
 			当问这个域名的NS，就回复另一个子域名，附上AAAA资源记录，该子域名只支持v6
 		*/
-		nsName := "ns-v6-4." + MainDomain
+		nsName := "ns-v6-4" + MainDomain
 		nsOfCnameHandler(w, m, nsName)
 
 	case dns.TypeAAAA:
@@ -39,22 +30,16 @@ func handler_v6_4(w dns.ResponseWriter, m *dns.Msg) {
 		*/
 
 		//remoteClient := strings.Split(w.RemoteAddr().String(), ":")
+		parts := strings.Split(dns.Fqdn(m.Question[0].Name), ".")
 
-		logger.Infof("收到请求：AAAA - qname：%s - 解析器IP： %s", m.Question[0].Name, w.RemoteAddr().String())
-		resp := new(dns.Msg)
-		resp.SetReply(m)
-		resp.Authoritative = true
-		resp.Rcode = dns.RcodeSuccess
-		rrAAAA, err := dns.NewRR(fmt.Sprintf("%s AAAA %s", m.Question[0].Name, "2001::"))
-		if err != nil {
-			logger.Errorf("error in build rr %s: %v", m.Question[0].Name, err)
+		if len(parts) != 7 {
+			logger.Debugf("invalid question name: %s %s", m.Question[0].Name, len(parts))
+			emptyHandler(w, m)
 			return
 		}
-		resp.Answer = append(resp.Answer, rrAAAA)
-		err = w.WriteMsg(resp)
-		if err != nil {
-			logger.Errorf("error in writing msg: %v", err)
-		}
+
+		logger.Infof("收到请求：AAAA - qname：%s - 解析器IP： %s", m.Question[0].Name, w.RemoteAddr().String())
+		aaaaHandler(w, m, "2001::")
 
 	}
 }
@@ -73,22 +58,9 @@ func handler_ns_v6_4(w dns.ResponseWriter, m *dns.Msg) {
 			当问这个域名的NS，就回复另一个子域名，附上AAAA资源记录，该子域名只支持v6
 		*/
 		logger.Infof("收到请求：AAAA - qname：%s - 解析器IP： %s", m.Question[0].Name, w.RemoteAddr().String())
-		resp := new(dns.Msg)
-		resp.SetReply(m)
-		resp.Authoritative = true
-		resp.Rcode = dns.RcodeSuccess
 		nsAddr := AuthName2Addr["ns-v6-4"]
-		rr, err := dns.NewRR(fmt.Sprintf("%s AAAA %s", m.Question[0].Name, nsAddr))
-		if err != nil {
-			logger.Errorf("error in build rr %s: %v", m.Question[0].Name, err)
-			return
-		}
-		resp.Answer = append(resp.Answer, rr)
-
-		err = w.WriteMsg(resp)
-		if err != nil {
-			logger.Errorf("error in writing msg: %v", err)
-		}
-
+		aaaaHandler(w, m, nsAddr)
+	case dns.TypeNS:
+		nsHandler(w, m, "ns1.dual-stack-ns.top.")
 	}
 }

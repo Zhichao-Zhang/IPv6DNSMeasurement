@@ -47,7 +47,7 @@ func handleDnsRequest(w dns.ResponseWriter, m *dns.Msg) {
 	}
 	parts := strings.Split(m.Question[0].Name, ".")
 	if len(parts) == MainDomainPartAmount {
-		//logger.Infof("MainDomain Parts Length %d", len(parts))
+		logger.Infof("MainDomain Parts Length %d", len(parts))
 		switch m.Question[0].Qtype {
 		case dns.TypeA:
 			//cnameHandler(w, m)
@@ -71,26 +71,40 @@ func handleDnsRequest(w dns.ResponseWriter, m *dns.Msg) {
 
 func Main(mode string) {
 	AuthName2Addr = map[string]string{
-		"ns-v6-2": "240b:4001:112:7b00:79e3:688a:710c:6858",
-		"ns-v6-4": "240b:4001:112:7b00:79e3:688a:710c:6454",
-		"ns-v4-3": "8.210.233.140",
+		"ns-v6-2": "240b:4001:112:7b00:79e3:688a:710c:6856",
+		"ns-v6-4": "240b:4001:112:7b00:79e3:688a:710c:6859",
+		"ns-v4-3": "47.238.64.245",
 	}
+	MainDomain = dns.Fqdn("dual-stack-discovery.cn.")
 	switch mode {
-	case "cudas":
-		MainDomain = dns.Fqdn("chain.dual-stack-discovery.cn.")
+	case "v4-1":
 		handlerMap = map[string]func(dns.ResponseWriter, *dns.Msg){
 			// 子域名的匹配，遇到不同子域名，给不同的处理
 			"v4-1":    handler_v4_1,
-			"v6-2":    handler_v6_2,
-			"v4-3":    handler_v4_3,
-			"v6-4":    handler_v6_4,
-			"ns-v6-2": handler_ns_v6_2,
+			"ns-v6-2": handler_ns_v6_2, // 这些NS记录，实际上也是查询
 			"ns-v6-4": handler_ns_v6_4,
 			"ns-v4-3": handler_ns_v4_3,
 		}
-		MainDomainPartAmount = len(strings.Split(MainDomain, "."))
-		dns.HandleFunc(MainDomain, handleDnsRequest)
+	case "v6-2":
+		MainDomain = dns.Fqdn("dual-stack-discovery.cn.")
+		handlerMap = map[string]func(dns.ResponseWriter, *dns.Msg){
+			// 子域名的匹配，遇到不同子域名，给不同的处理
+			"v6-2": handler_v6_2,
+		}
+	case "v4-3":
+		MainDomain = dns.Fqdn("dual-stack-discovery.cn.")
+		handlerMap = map[string]func(dns.ResponseWriter, *dns.Msg){
+			// 子域名的匹配，遇到不同子域名，给不同的处理
+			"v4-3": handler_v4_3,
+		}
+	case "v6-4":
+		handlerMap = map[string]func(dns.ResponseWriter, *dns.Msg){
+			// 子域名的匹配，遇到不同子域名，给不同的处理
+			"v6-4": handler_v6_4,
+		}
 	}
+	MainDomainPartAmount = len(strings.Split(MainDomain, "."))
+	dns.HandleFunc(MainDomain, handleDnsRequest)
 	// start server
 	port := 53
 	server := &dns.Server{Addr: ":" + strconv.Itoa(port), Net: "udp"}

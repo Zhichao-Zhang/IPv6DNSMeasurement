@@ -6,11 +6,13 @@ import (
 	"github.com/miekg/dns"
 )
 
-func nsOfCnameHandler(w dns.ResponseWriter, m *dns.Msg, nsName string) {
+func nsOfCnameHandler(w dns.ResponseWriter, m *dns.Msg, nsSubdomain string) {
 	/*
 		对于ns共同的部分，统一处理
 		该部分是cname的ns记录的处理
 	*/
+	nsName := nsSubdomain + "." + MainDomain
+
 	logger.Infof("收到请求：NS - qname：%s - 解析器IP： %s", m.Question[0].Name, w.RemoteAddr().String())
 	resp := new(dns.Msg)
 	resp.SetReply(m)
@@ -23,23 +25,23 @@ func nsOfCnameHandler(w dns.ResponseWriter, m *dns.Msg, nsName string) {
 	}
 	resp.Ns = append(resp.Ns, rr)
 
-	nsAddr := AuthName2Addr[nsName]
+	nsAddr := AuthName2Addr[nsSubdomain]
+	logger.Infof("nsName %s, nsAddr : %s", nsSubdomain, nsAddr)
 	// 根据地址类型不同，给不同的资源记录
 	if utils.IsIPv6(nsAddr) {
 		rrExtra, err := dns.NewRR(fmt.Sprintf("%s AAAA %s", nsName, nsAddr))
 		if err != nil {
-			logger.Errorf("error in build rr %s: %v", m.Question[0].Name, err)
+			logger.Errorf("error in build rr %s %s: %v ", nsAddr, m.Question[0].Name, err)
 			return
 		}
 		resp.Extra = append(resp.Extra, rrExtra)
 	} else {
 		rrExtra, err := dns.NewRR(fmt.Sprintf("%s A %s", nsName, nsAddr))
 		if err != nil {
-			logger.Errorf("error in build rr %s: %v", m.Question[0].Name, err)
+			logger.Errorf("error in build rr %s %s %v", m.Question[0].Name, nsAddr, err)
 			return
 		}
 		resp.Extra = append(resp.Extra, rrExtra)
-
 	}
 
 	err = w.WriteMsg(resp)
@@ -83,11 +85,45 @@ func emptyHandler(w dns.ResponseWriter, m *dns.Msg) {
 	_ = w.WriteMsg(resp)
 	return
 }
+func aaaaHandler(w dns.ResponseWriter, m *dns.Msg, addr_v6 string) {
+	resp := new(dns.Msg)
+	resp.SetReply(m)
+	resp.Authoritative = true
+	resp.Rcode = dns.RcodeSuccess
+	rr, err := dns.NewRR(fmt.Sprintf("%s AAAA %s", m.Question[0].Name, addr_v6))
+	if err != nil {
+		logger.Errorf("error in build rr %s: %v", m.Question[0].Name, err)
+		return
+	}
+	resp.Answer = append(resp.Answer, rr)
+	err = w.WriteMsg(resp)
+	if err != nil {
+		logger.Errorf("error in writing msg: %v", err)
+	}
+}
+
+func aHandler(w dns.ResponseWriter, m *dns.Msg, addr_v4 string) {
+	resp := new(dns.Msg)
+	resp.SetReply(m)
+	resp.Authoritative = true
+	resp.Rcode = dns.RcodeSuccess
+	rr, err := dns.NewRR(fmt.Sprintf("%s A %s", m.Question[0].Name, addr_v4))
+	if err != nil {
+		logger.Errorf("error in build rr %s: %v", m.Question[0].Name, err)
+		return
+	}
+	resp.Answer = append(resp.Answer, rr)
+	err = w.WriteMsg(resp)
+	if err != nil {
+		logger.Errorf("error in writing msg: %v", err)
+	}
+}
 
 func nsHandler(w dns.ResponseWriter, m *dns.Msg, ns string) {
 	resp := new(dns.Msg)
 	resp.SetReply(m)
 	resp.Authoritative = true
+	resp.Rcode = dns.RcodeSuccess
 	rr, err := dns.NewRR(fmt.Sprintf("%s NS %s", m.Question[0].Name, ns))
 	if err != nil {
 		logger.Errorf("error in build rr %s: %v", m.Question[0].Name, err)
@@ -100,11 +136,12 @@ func nsHandler(w dns.ResponseWriter, m *dns.Msg, ns string) {
 	}
 }
 
-func cnameHandler(w dns.ResponseWriter, m *dns.Msg) {
+func cnameHandler(w dns.ResponseWriter, m *dns.Msg, cname string) {
 	resp := new(dns.Msg)
 	resp.SetReply(m)
 	resp.Authoritative = true
-	rr, err := dns.NewRR(fmt.Sprintf("%s CNAME %s", m.Question[0].Name, NSv4))
+	resp.Rcode = dns.RcodeSuccess
+	rr, err := dns.NewRR(fmt.Sprintf("%s CNAME %s", m.Question[0].Name, cname))
 	if err != nil {
 		logger.Errorf("error in build rr %s: %v", m.Question[0].Name, err)
 		return
