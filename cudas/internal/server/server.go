@@ -25,7 +25,7 @@ var NSv4 string
 var NSv6 string
 var handlerMap map[string]func(dns.ResponseWriter, *dns.Msg)
 
-var MainDomainPartAmount = 3
+var MainDomainPartAmount int
 
 type dnsQueryMeta struct {
 	Msg  *dns.Msg
@@ -44,14 +44,16 @@ func handleDnsRequest(w dns.ResponseWriter, m *dns.Msg) {
 		logger.Errorf("Not Correct Opcode!!!")
 		refuseHandler(w, m)
 	}
-	if !strings.HasSuffix(m.Question[0].Name, MainDomain) {
+	if !strings.HasSuffix(strings.ToLower(m.Question[0].Name), MainDomain) {
+		//if !strings.HasSuffix(m.Question[0].Name, MainDomain) {
 		logger.Errorf("Wrong Domain Suffix!!! %s", m.Question[0].Name)
 		refuseHandler(w, m)
 		return
 	}
-	parts := strings.Split(m.Question[0].Name, ".")
+	parts := strings.Split(dns.Fqdn(m.Question[0].Name), ".")
+	logger.Infof("input query: %s , %d", m.Question[0].Name, m.Question[0].Qtype)
 	if len(parts) == MainDomainPartAmount {
-		logger.Infof("MainDomain Parts Length %d", len(parts))
+		//logger.Infof("Parts Length %d  ; MainDomainPartAmount: %d", len(parts), MainDomainPartAmount)
 		switch m.Question[0].Qtype {
 		case dns.TypeA:
 			//cnameHandler(w, m)
@@ -107,6 +109,21 @@ func Main(mode string) {
 			// 子域名的匹配，遇到不同子域名，给不同的处理
 			"v6-4": handler_v6_4,
 		}
+	case "client":
+		workerAmount := 1000000
+		inputChannel := make(chan *dnsQueryMeta, 50*workerAmount)
+		finishChannel := make(chan bool, workerAmount)
+		ipv4_global_dns_file := "/root/Dual_Stack_DNS_Discovery/cudas/data/ipv4-global-dns.240110.txt"
+		go producer(ipv4_global_dns_file, inputChannel)
+		for i := 0; i < workerAmount; i++ {
+			go dnsWorker(inputChannel, finishChannel)
+		}
+
+		for i := 0; i < workerAmount; i++ {
+			<-finishChannel
+		}
+		close(finishChannel)
+		return
 	}
 	MainDomainPartAmount = len(strings.Split(MainDomain, "."))
 	dns.HandleFunc(MainDomain, handleDnsRequest)

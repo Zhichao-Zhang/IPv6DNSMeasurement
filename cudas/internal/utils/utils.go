@@ -8,6 +8,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func IpToInt36(ip net.IP) string {
@@ -36,7 +37,13 @@ func IsIPv6(str string) bool {
 	return ip != nil && strings.Contains(str, ":")
 }
 
+func IsIPv4(str string) bool {
+	ip := net.ParseIP(str)
+	return ip != nil && strings.Contains(str, ".") && ip.To4() != nil
+}
+
 func GetNonce() string {
+	rand.Seed(time.Now().UnixNano()) // 设置随机种子˛
 	randomNumber := rand.Intn(1000000)
 	// 将整数转换为字符串
 	return strconv.Itoa(randomNumber)

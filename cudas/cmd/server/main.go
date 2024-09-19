@@ -14,7 +14,7 @@ func main() {
 		return
 	}
 	mode := gcmd.GetOpt("m").String()
-	allow_mode_types := map[string]bool{"v4-1": true, "v6-2": true, "v4-3": true, "v6-4": true}
+	allow_mode_types := map[string]bool{"v4-1": true, "v6-2": true, "v4-3": true, "v6-4": true, "client": true}
 	if _, exists := allow_mode_types[mode]; exists {
 		fmt.Printf("starting the [auth %s] server ... \n", mode)
 		server.Main(mode)

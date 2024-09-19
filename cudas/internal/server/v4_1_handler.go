@@ -24,6 +24,7 @@ func handler_v4_1(w dns.ResponseWriter, m *dns.Msg) {
 			应答区：CNAME N.IP2.IP1.v6-2.xxx（dual_stack_discovery.cn）
 			附加趋：NS + AAAA
 		*/
+		print("11")
 		logger.Infof("收到请求：AAAA - qname：%s - 解析器IP： %s", m.Question[0].Name, w.RemoteAddr().String())
 
 		// 制定具体的CNAME，并返回结果：计算IP1，IP2
